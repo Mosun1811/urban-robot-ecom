@@ -1,4 +1,4 @@
-// This file is assigned to Valencia 
+// This file is assigned to Valencia
 // PURPOSE:
 // - HTTP handlers for product catalogue and admin product management.
 // - Handles listing, filtering, fetching details, and admin create/update.
@@ -34,14 +34,15 @@
 package handlers
 
 import (
+	"futuremarket/service"
 	"net/http"
 
-	"gorm.io/gorm"
+	
 )
 
 // ProductHandler manages product listing, search and admin product management.
 type ProductHandler struct {
-	DB *gorm.DB
+	Service service.ProductService
 }
 
 // GET /api/v1/products

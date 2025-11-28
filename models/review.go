@@ -1,10 +1,14 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 // Review is essentially a customer's review and rating for a product (refer to Epic 6).
 type Review struct {
-	ID        uint   `gorm:"primaryKey"`
+	gorm.Model
 	ProductID uint   `gorm:"index"`
 	UserID    uint   `gorm:"index"`
 	Rating    int    // 1–5

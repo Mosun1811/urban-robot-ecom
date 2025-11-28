@@ -1,10 +1,14 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 // Product is an item that can be listed, searched and bought.
 type Product struct {
-	ID          uint   `gorm:"primaryKey"`
+	gorm.Model
 	Name        string `gorm:"size:255"`
 	Description string `gorm:"type:text"`
 	Category    string `gorm:"size:100"`

@@ -40,15 +40,15 @@ import (
 	"time"
 
 	"futuremarket/models"
+	"futuremarket/service"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 // AuthHandler handles registration and login
 type AuthHandler struct {
-	DB *gorm.DB
+	Service service.UserService
 }
 
 // -----------------------------------------------
@@ -74,28 +74,29 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if email already exists
-	var existing models.User
-	if err := h.DB.Where("email = ?", req.Email).First(&existing).Error; err == nil {
-		http.Error(w, "email already registered", http.StatusConflict)
+	_, err := h.Service.GetUserByEmail(req.Email)
+	if err == nil {
+		http.Error(w, "user with email already exists", http.StatusBadRequest)
 		return
 	}
-
+	
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		http.Error(w, "failed to hash password", http.StatusInternalServerError)
 		return
 	}
-
+	
 	// Create user
-	user := models.User{
+	user := &models.User{
 		Name:         req.Name,
 		Email:        req.Email,
 		PasswordHash: string(hashedPassword),
 		Role:         "customer",
 	}
 
-	if err := h.DB.Create(&user).Error; err != nil {
+	err = h.Service.CreateUser(user)
+	if err != nil {
 		http.Error(w, "failed to create user", http.StatusInternalServerError)
 		return
 	}
@@ -129,8 +130,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Find user
-	var user models.User
-	if err := h.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+	user, err := h.Service.GetUserByEmail(req.Email)
+	if err != nil {
 		http.Error(w, "invalid email or password", http.StatusUnauthorized)
 		return
 	}

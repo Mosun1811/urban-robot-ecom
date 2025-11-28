@@ -39,14 +39,15 @@
 package handlers
 
 import (
+	"futuremarket/service"
 	"net/http"
 
-	"gorm.io/gorm"
+	
 )
 
 // OrderHandler manages checkout and order history (Epic 4).
 type OrderHandler struct {
-	DB *gorm.DB
+	Service service.OrderService
 }
 
 // POST /api/v1/checkout

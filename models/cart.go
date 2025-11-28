@@ -1,10 +1,14 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 // this one user's basket...
 type Cart struct {
-	ID        uint `gorm:"primaryKey"`
+	gorm.Model
 	UserID    uint `gorm:"index"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
