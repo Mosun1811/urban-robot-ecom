@@ -34,24 +34,142 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
+	"os"
+	"time"
 
-	"gorm.io/gorm"
+	"futuremarket/models"
+	"futuremarket/service"
+
+	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
-// AuthHandler handles registration and login (Epic 1: IAM).
+// AuthHandler handles registration and login
 type AuthHandler struct {
-	DB *gorm.DB
+	Service service.UserService
 }
 
+// -----------------------------------------------
 // POST /api/v1/register
+// -----------------------------------------------
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte("TODO: implement user registration"))
+	var req struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	// Parse input JSON
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Basic validation
+	if req.Name == "" || req.Email == "" || req.Password == "" {
+		http.Error(w, "name, email and password required", http.StatusBadRequest)
+		return
+	}
+
+	// Check if email already exists
+	_, err := h.Service.GetUserByEmail(req.Email)
+	if err == nil {
+		http.Error(w, "user with email already exists", http.StatusBadRequest)
+		return
+	}
+	
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "failed to hash password", http.StatusInternalServerError)
+		return
+	}
+	
+	// Create user
+	user := &models.User{
+		Name:         req.Name,
+		Email:        req.Email,
+		PasswordHash: string(hashedPassword),
+		Role:         "customer",
+	}
+
+	err = h.Service.CreateUser(user)
+	if err != nil {
+		http.Error(w, "failed to create user", http.StatusInternalServerError)
+		return
+	}
+
+	// Response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "registration successful",
+	})
 }
 
+// -----------------------------------------------
 // POST /api/v1/login
+// -----------------------------------------------
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte("TODO: implement user login"))
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	// Parse JSON
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.Email == "" || req.Password == "" {
+		http.Error(w, "email and password required", http.StatusBadRequest)
+		return
+	}
+
+	// Find user
+	user, err := h.Service.GetUserByEmail(req.Email)
+	if err != nil {
+		http.Error(w, "invalid email or password", http.StatusUnauthorized)
+		return
+	}
+
+	// Compare password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		http.Error(w, "invalid email or password", http.StatusUnauthorized)
+		return
+	}
+
+	// JWT claims
+	claims := jwt.MapClaims{
+		"user_id": user.ID,
+		"role":    user.Role,
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Sign token
+	signedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		http.Error(w, "failed to generate token", http.StatusInternalServerError)
+		return
+	}
+
+	// Send back the token
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"token": signedToken,
+	})
+}
+
+// -----------------------------------------------
+// POST /api/v1/logout
+// -----------------------------------------------
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "logout successful — please delete your token on the client side",
+	})
 }

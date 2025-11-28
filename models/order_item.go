@@ -1,8 +1,10 @@
 package models
 
+import "gorm.io/gorm"
+
 // OrderItem stores each product in an order with the exact price paid at purchase time.
 type OrderItem struct {
-	ID         uint  `gorm:"primaryKey"`
+	gorm.Model
 	OrderID    uint  `gorm:"index"`
 	ProductID  uint  `gorm:"index"`
 	Quantity   int   // must be > 0

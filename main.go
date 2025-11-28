@@ -7,38 +7,50 @@ import (
 
 	"futuremarket/db"
 	"futuremarket/handlers"
+	"futuremarket/repository"
 	"futuremarket/routes"
+	"futuremarket/service"
 )
 
 func main() {
 
 	database := db.InitDB()
+	userRepo:= repository.UserRepo{DB: database}
+	cartRepo:= repository.CartRepo{DB: database}
+	orderRepo:= repository.OrderRepo{DB: database}
+	productRepo:= repository.ProductRepo{DB: database}
+	reviewRepo:= repository.ReviewRepo{DB: database}
 
+	userService:= service.UserService{Repo: userRepo}
+	cartService:= service.CartService{Repo: cartRepo}
+	orderService:= service.OrderService{Repo: orderRepo}
+	productService:= service.ProductService{Repo: productRepo}
+	reviewService:= service.ReviewService{Repo: reviewRepo}
 	//    Gonna leave these empty for now.
 	//    Later, the team will work through services/repositories into these.
 	authHandler := &handlers.AuthHandler{
 
-		DB: database,
+		Service: userService,
 	}
 
 	productHandler := &handlers.ProductHandler{
 		//   ProductRepo, StockRepo
-		DB: database,
+		Service: productService,
 	}
 
 	cartHandler := &handlers.CartHandler{
 		// which will use CartRepos, Product/StockRepo
-		DB: database,
+		Service: cartService,
 	}
 
 	orderHandler := &handlers.OrderHandler{
 		//  which will handle checkout + transactions
-		DB: database,
+		Service: orderService,
 	}
 
 	reviewHandler := &handlers.ReviewHandler{
 		//   ReviewRepo + ProductRepo
-		DB: database,
+		Service: reviewService,
 	}
 
 	//  Register all routes and middleware.

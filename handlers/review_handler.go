@@ -1,5 +1,3 @@
-
-
 // This file is assigned to Jasmine, Qas, Yasin ...
 // review_handlers.go
 //
@@ -29,21 +27,21 @@
 // NOTES FOR TEAM:
 // - After create/update/delete, service must recalculate product average_rating & review_count.
 
-
 // What I have done below is just to build so that everything compiles and you'll be able to clone have working code
 // Only thing you'd need to do is to write the logic
 
 package handlers
 
 import (
+	"futuremarket/service"
 	"net/http"
 
-	"gorm.io/gorm"
+	
 )
 
 // ReviewHandler manages reviews and ratings (Epic 6).
 type ReviewHandler struct {
-	DB *gorm.DB
+	Service service.ReviewService
 }
 
 // GET /api/v1/products/{id}/reviews

@@ -35,14 +35,15 @@
 package handlers
 
 import (
+	"futuremarket/service"
 	"net/http"
 
-	"gorm.io/gorm"
+	
 )
 
 // CartHandler manages the shopping cart (Epic 3).
 type CartHandler struct {
-	DB *gorm.DB
+	Service service.CartService
 }
 
 // GET /api/v1/cart
