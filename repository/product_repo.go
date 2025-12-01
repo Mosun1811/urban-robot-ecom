@@ -14,20 +14,37 @@ func NewProductRepo(db *gorm.DB) ProductRepo {
 	return ProductRepo{DB: db}
 }
 
-// ListProducts retrieves products with pagination.
-func (r ProductRepo) ListProducts(page int, limit int) ([]models.Product, int64, error) {
+// ------------------------------------------------------------------
+// LIST PRODUCTS WITH PAGINATION + FILTERING
+// ------------------------------------------------------------------
+func (r ProductRepo) ListProductsFiltered(page, limit int, minPrice, maxPrice *int64, category *string) ([]models.Product, int64, error) {
 	var products []models.Product
 	var totalItems int64
 
-	// Count total product rows
-	if err := r.DB.Model(&models.Product{}).Count(&totalItems).Error; err != nil {
+	query := r.DB.Model(&models.Product{})
+
+	// Apply filters dynamically
+	if minPrice != nil {
+		query = query.Where("price_cents >= ?", *minPrice)
+	}
+
+	if maxPrice != nil {
+		query = query.Where("price_cents <= ?", *maxPrice)
+	}
+
+	if category != nil && *category != "" {
+		query = query.Where("LOWER(category) = LOWER(?)", *category)
+	}
+
+	// Count rows AFTER filters
+	if err := query.Count(&totalItems).Error; err != nil {
 		return nil, 0, err
 	}
 
 	offset := (page - 1) * limit
 
-	// Fetch paginated products
-	err := r.DB.
+	// Apply pagination
+	err := query.
 		Limit(limit).
 		Offset(offset).
 		Order("created_at DESC").
@@ -38,4 +55,14 @@ func (r ProductRepo) ListProducts(page int, limit int) ([]models.Product, int64,
 	}
 
 	return products, totalItems, nil
+}
+
+// ------------------------------------------------------------------
+// GET SINGLE PRODUCT BY ID
+// ------------------------------------------------------------------
+func (r ProductRepo) GetProductByID(id uint) (models.Product, error) {
+	var product models.Product
+	err := r.DB.First(&product, id).Error
+
+	return product, err
 }

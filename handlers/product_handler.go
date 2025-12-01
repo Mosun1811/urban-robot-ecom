@@ -38,6 +38,8 @@ import (
 	"futuremarket/service"
 	"net/http"
 	"strconv"
+	"github.com/gorilla/mux"
+
 	
 )
 
@@ -48,42 +50,69 @@ type ProductHandler struct {
 
 // GET /api/v1/products
 func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
-	// Parse pagination params: ?page=2&limit=50
-	pageStr := r.URL.Query().Get("page")
-	limitStr := r.URL.Query().Get("limit")
+	q := r.URL.Query()
 
+	// Pagination
 	page := 1
-	limit := 20 // default limit
+	limit := 20
 
-	if pageStr != "" {
-		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
-			page = p
+	if p, err := strconv.Atoi(q.Get("page")); err == nil && p > 0 {
+		page = p
+	}
+	if l, err := strconv.Atoi(q.Get("limit")); err == nil && l > 0 {
+		limit = l
+	}
+
+	// Filters
+	var minPricePtr, maxPricePtr *int64
+	if v := q.Get("min_price"); v != "" {
+		if val, err := strconv.ParseInt(v, 10, 64); err == nil {
+			minPricePtr = &val
+		}
+	}
+	if v := q.Get("max_price"); v != "" {
+		if val, err := strconv.ParseInt(v, 10, 64); err == nil {
+			maxPricePtr = &val
 		}
 	}
 
-	if limitStr != "" {
-		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
-			limit = l
-		}
+	category := q.Get("category")
+	var categoryPtr *string
+	if category != "" {
+		categoryPtr = &category
 	}
 
 	// Call service
-	result, err := h.Service.ListProducts(page, limit)
+	result, err := h.Service.ListProductsWithFilters(page, limit, minPricePtr, maxPricePtr, categoryPtr)
 	if err != nil {
 		http.Error(w, "failed to fetch products", http.StatusInternalServerError)
 		return
 	}
 
-	// Send JSON response
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
 }
 
+
 // GET /api/v1/products/{id}
 func (h *ProductHandler) GetProductByID(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte("TODO: implement get single product by ID"))
+	idStr := mux.Vars(r)["id"]
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id < 1 {
+		http.Error(w, "invalid product id", http.StatusBadRequest)
+		return
+	}
+
+	product, err := h.Service.GetProductByID(uint(id))
+	if err != nil {
+		http.Error(w, "product not found", http.StatusNotFound)
+		return
+	}
+
+	json.NewEncoder(w).Encode(product)
 }
+
 
 // POST /api/v1/admin/products  (via admin routes)
 func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {

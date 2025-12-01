@@ -6,9 +6,9 @@ import (
 	"math"
 )
 
-type ProductService struct {
-	Repo repository.ProductRepo
-}
+// --------------------------------------
+// RESPONSE STRUCTS (must be above methods)
+// --------------------------------------
 
 type ProductListResponse struct {
 	Products []models.Product `json:"products"`
@@ -22,8 +22,25 @@ type PaginationMeta struct {
 	Limit       int   `json:"limit"`
 }
 
-func (s ProductService) ListProducts(page, limit int) (ProductListResponse, error) {
-	products, totalItems, err := s.Repo.ListProducts(page, limit)
+// --------------------------------------
+// SERVICE STRUCT
+// --------------------------------------
+
+type ProductService struct {
+	Repo repository.ProductRepo
+}
+
+// ------------------------------------------------------------------
+// LIST PRODUCTS WITH FILTERING
+// ------------------------------------------------------------------
+
+func (s ProductService) ListProductsWithFilters(
+	page, limit int,
+	minPrice, maxPrice *int64,
+	category *string,
+) (ProductListResponse, error) {
+
+	products, totalItems, err := s.Repo.ListProductsFiltered(page, limit, minPrice, maxPrice, category)
 	if err != nil {
 		return ProductListResponse{}, err
 	}
@@ -41,4 +58,12 @@ func (s ProductService) ListProducts(page, limit int) (ProductListResponse, erro
 		Products: products,
 		Meta:     meta,
 	}, nil
+}
+
+// ------------------------------------------------------------------
+// GET PRODUCT BY ID
+// ------------------------------------------------------------------
+
+func (s ProductService) GetProductByID(id uint) (models.Product, error) {
+	return s.Repo.GetProductByID(id)
 }
