@@ -34,9 +34,10 @@
 package handlers
 
 import (
+	"encoding/json"
 	"futuremarket/service"
 	"net/http"
-
+	"strconv"
 	
 )
 
@@ -47,8 +48,35 @@ type ProductHandler struct {
 
 // GET /api/v1/products
 func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte("TODO: implement product listing with pagination & filters"))
+	// Parse pagination params: ?page=2&limit=50
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+
+	page := 1
+	limit := 20 // default limit
+
+	if pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	// Call service
+	result, err := h.Service.ListProducts(page, limit)
+	if err != nil {
+		http.Error(w, "failed to fetch products", http.StatusInternalServerError)
+		return
+	}
+
+	// Send JSON response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
 }
 
 // GET /api/v1/products/{id}

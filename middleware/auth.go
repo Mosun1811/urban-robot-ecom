@@ -9,6 +9,15 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// This interface allows your service to be injected cleanly.
+type BlacklistService interface {
+	IsTokenBlacklisted(token string) (bool, error)
+}
+
+type AuthMiddlewareConfig struct {
+	BlacklistService BlacklistService
+}
+
 type ctxKey string
 
 const (
@@ -16,8 +25,7 @@ const (
 	ContextRole   ctxKey = "role"
 )
 
-// AuthMiddleware verifies JWT tokens and injects user info into the request context.
-func AuthMiddleware(next http.Handler) http.Handler {
+func (cfg AuthMiddlewareConfig) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// 1. Read Authorization header
@@ -29,7 +37,21 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 
-		// 2. Parse and validate JWT
+		// 2. 🔥 Blacklist check BEFORE parsing JWT
+		if cfg.BlacklistService != nil {
+			isBlacklisted, err := cfg.BlacklistService.IsTokenBlacklisted(tokenStr)
+			if err != nil {
+				http.Error(w, "server error", http.StatusInternalServerError)
+				return
+			}
+
+			if isBlacklisted {
+				http.Error(w, "token is blacklisted", http.StatusUnauthorized)
+				return
+			}
+		}
+
+		// 3. Parse and validate JWT
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, http.ErrAbortHandler
@@ -42,7 +64,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// 3. Extract claims
+		// 4. Extract claims
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			http.Error(w, "invalid token claims", http.StatusUnauthorized)
@@ -64,11 +86,11 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// 4. Store values in context
+		// 5. Store values in context
 		ctx := context.WithValue(r.Context(), ContextUserID, userID)
 		ctx = context.WithValue(ctx, ContextRole, role)
 
-		// 5. Continue the request
+		// 6. Continue the request
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

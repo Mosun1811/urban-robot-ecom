@@ -48,6 +48,7 @@ func InitDB() *gorm.DB {
 		&models.Order{},
 		&models.OrderItem{},
 		&models.Review{},
+		&models.TokenBlacklist{},
 	)
 	if err != nil {
 		log.Fatalf("unable to migrate schema: %v", err)
