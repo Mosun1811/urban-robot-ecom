@@ -7,6 +7,7 @@ import (
 
 	"futuremarket/handlers"
 	"futuremarket/middleware"
+	"futuremarket/service" 
 )
 
 func SetupRouter(
@@ -15,6 +16,7 @@ func SetupRouter(
 	cartHandler *handlers.CartHandler,
 	orderHandler *handlers.OrderHandler,
 	reviewHandler *handlers.ReviewHandler,
+	blacklistService service.BlacklistService,
 ) *mux.Router {
 	r := mux.NewRouter()
 
@@ -44,7 +46,12 @@ func SetupRouter(
 	// PROTECTED ROUTES (TOKEN REQUIRED)
 	// ---------------------------------------
 	protected := r.PathPrefix("/api/v1").Subrouter()
-	protected.Use(middleware.AuthMiddleware)
+	protected.Use(
+	middleware.AuthMiddlewareConfig{
+		BlacklistService: blacklistService,
+	}.AuthMiddleware,
+)
+
 
 	// Logout (client should delete token)
 	protected.HandleFunc("/logout", authHandler.Logout).Methods(http.MethodPost)
