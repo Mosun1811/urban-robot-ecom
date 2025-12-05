@@ -6,11 +6,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
-	"futuremarket/service"
 	"futuremarket/middleware"
+	"futuremarket/service"
 )
 
 // ReviewHandler manages reviews and ratings (Epic 6).
@@ -36,48 +35,6 @@ type reviewResponse struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
-// rateLimiter stores recent review timestamps per user for basic rate limiting.
-type rateLimiter struct {
-	mu   sync.Mutex
-	hits map[uint][]time.Time
-}
-
-func newRateLimiter() *rateLimiter {
-	return &rateLimiter{
-		hits: make(map[uint][]time.Time),
-	}
-}
-
-// allow returns true if the user has made fewer than 5 review requests
-// in the last 60 seconds. Otherwise it blocks the request.
-func (rl *rateLimiter) allow(userID uint) bool {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	now := time.Now()
-	windowStart := now.Add(-1 * time.Minute)
-
-	history := rl.hits[userID]
-	var kept []time.Time
-
-	for _, t := range history {
-		if t.After(windowStart) {
-			kept = append(kept, t)
-		}
-	}
-
-	if len(kept) >= 5 {
-		rl.hits[userID] = kept
-		return false
-	}
-
-	kept = append(kept, now)
-	rl.hits[userID] = kept
-	return true
-}
-
-// global in-memory limiter for all review requests.
-var reviewLimiter = newRateLimiter()
 
 // getProductIDFromPath extracts the {product_id} from a path like
 // /api/v1/products/12/reviews.
@@ -100,21 +57,10 @@ func getProductIDFromPath(path string) (uint, error) {
 	return 0, errors.New("product id not found")
 }
 
-func getUserIDFromContext(r *http.Request) (uint, bool) {
-	val := r.Context().Value(middleware.ContextUserID)
-	if val == nil {
-		return 0, false
-	}
-
-	if id, ok := val.(int); ok && id > 0 {
-		return uint(id), true
-	}
-
-	return 0, false
-}
 
 // ListReviews handles:
-//   GET /api/v1/products/{id}/reviews
+//
+//	GET /api/v1/products/{id}/reviews
 //
 // Public endpoint.
 // Returns all reviews for a product, newest first,
@@ -156,7 +102,8 @@ func (h *ReviewHandler) ListReviews(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateOrUpdateReview handles:
-//   POST /api/v1/products/{id}/reviews
+//
+//	POST /api/v1/products/{id}/reviews
 //
 // Requires authenticated user.
 // Validates rating, enforces rate limit, and calls the ReviewService to
@@ -167,18 +114,16 @@ func (h *ReviewHandler) CreateOrUpdateReview(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	//TEMP for testing: pretend user with ID 1 is logged in
-	userID := uint(1)
+	userID, ok := middleware.GetUserIDFromContext(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 
 	productID, err := getProductIDFromPath(r.URL.Path)
 	if err != nil {
 		http.Error(w, "invalid product id", http.StatusBadRequest)
-		return
-	}
-
-	// Basic in-memory rate limiting: max 5 reviews per user per minute.
-	if !reviewLimiter.allow(userID) {
-		http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 		return
 	}
 

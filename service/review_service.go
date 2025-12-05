@@ -83,4 +83,6 @@ func (s *ReviewService) recalcProductRating(productID uint) error {
 	avgRounded := math.Round(avg*10) / 10
 
 	return s.Repo.UpdateProductRating(productID, avgRounded, count)
+
+	
 }

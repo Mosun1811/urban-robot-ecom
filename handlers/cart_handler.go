@@ -72,4 +72,3 @@ func (h *CartHandler) RemoveCartItem(w http.ResponseWriter, r *http.Request) {
 
 // What I have done below is just to build so that everything compiles and you'll be able to clone have working code
 // Only thing you'd need to do is to write the logic
-
