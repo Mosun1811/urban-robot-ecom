@@ -93,4 +93,17 @@ func (cfg AuthMiddlewareConfig) AuthMiddleware(next http.Handler) http.Handler {
 		// 6. Continue the request
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+} 
+// GetUserIDFromContext returns the user ID from the request context 
+func GetUserIDFromContext(r *http.Request) (uint, bool) {
+	val := r.Context().Value(ContextUserID)
+	if val == nil {
+		return 0, false
+	}
+
+	if id, ok := val.(int); ok && id > 0 {
+		return uint(id), true
+	}
+
+	return 0, false
 }
