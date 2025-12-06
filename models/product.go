@@ -12,12 +12,14 @@ type Product struct {
 	Name        string `gorm:"size:255"`
 	Description string `gorm:"type:text"`
 	Category    string `gorm:"size:100"`
-	PriceCents  int64  // store price in cents to avoid float issues
+	PriceCents  int64  // store price in cents
+	Stock       int64  // NEW FIELD for inventory
 	ImageURL    string `gorm:"size:500"`
 
 	// Denormalised rating info (Epic 6.3)
-	AverageRating float32 // 1 decimal place logically
+	AverageRating float32
 	ReviewCount   int64
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

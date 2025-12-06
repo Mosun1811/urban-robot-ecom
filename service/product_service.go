@@ -1,14 +1,16 @@
 package service
 
 import (
+	"errors"
+	"math"
+
 	"futuremarket/models"
 	"futuremarket/repository"
-	"math"
 )
 
-// --------------------------------------
-// RESPONSE STRUCTS (must be above methods)
-// --------------------------------------
+type ProductService struct {
+	Repo repository.ProductRepo
+}
 
 type ProductListResponse struct {
 	Products []models.Product `json:"products"`
@@ -22,21 +24,60 @@ type PaginationMeta struct {
 	Limit       int   `json:"limit"`
 }
 
-// --------------------------------------
-// SERVICE STRUCT
-// --------------------------------------
-
-type ProductService struct {
-	Repo repository.ProductRepo
+// ----------------------------
+// CREATE PRODUCT (Admin Only)
+// ----------------------------
+func (s ProductService) CreateProduct(p *models.Product) error {
+	if p.Name == "" || p.PriceCents <= 0 {
+		return errors.New("invalid product fields")
+	}
+	return s.Repo.CreateProduct(p)
 }
 
-// ------------------------------------------------------------------
-// LIST PRODUCTS WITH FILTERING
-// ------------------------------------------------------------------
+// ----------------------------
+// UPDATE PRODUCT (Admin Only)
+// ----------------------------
+func (s ProductService) UpdateProduct(id uint, updateData *models.Product) (models.Product, error) {
+	existing, err := s.Repo.GetProductByID(id)
+	if err != nil {
+		return models.Product{}, errors.New("product not found")
+	}
 
+	// Update only provided fields
+	if updateData.Name != "" {
+		existing.Name = updateData.Name
+	}
+	if updateData.Description != "" {
+		existing.Description = updateData.Description
+	}
+	if updateData.Category != "" {
+		existing.Category = updateData.Category
+	}
+	if updateData.PriceCents > 0 {
+		existing.PriceCents = updateData.PriceCents
+	}
+	if updateData.ImageURL != "" {
+		existing.ImageURL = updateData.ImageURL
+	}
+
+	// ⭐ Add stock update here
+	if updateData.Stock >= 0 {
+		existing.Stock = updateData.Stock
+	}
+
+	// Save updated product
+	err = s.Repo.UpdateProduct(&existing)
+	return existing, err
+}
+
+// ----------------------------
+// LIST PRODUCTS + FILTERS
+// ----------------------------
 func (s ProductService) ListProductsWithFilters(
-	page, limit int,
-	minPrice, maxPrice *int64,
+	page int,
+	limit int,
+	minPrice *int64,
+	maxPrice *int64,
 	category *string,
 ) (ProductListResponse, error) {
 
@@ -60,10 +101,9 @@ func (s ProductService) ListProductsWithFilters(
 	}, nil
 }
 
-// ------------------------------------------------------------------
-// GET PRODUCT BY ID
-// ------------------------------------------------------------------
-
+// ----------------------------
+// GET SINGLE PRODUCT
+// ----------------------------
 func (s ProductService) GetProductByID(id uint) (models.Product, error) {
 	return s.Repo.GetProductByID(id)
 }

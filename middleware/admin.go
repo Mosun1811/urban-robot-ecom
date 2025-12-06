@@ -1,18 +1,23 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 )
 
 func AdminMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		role, ok := r.Context().Value("role").(string)
-		if !ok || role != "admin" {
-			http.Error(w, "Forbidden: Admins only", http.StatusForbidden)
-			return
-		}
+        roleValue := r.Context().Value(ContextRole) // <-- FIX: use ctxKey, not string
+        role, ok := roleValue.(string)
 
-		next.ServeHTTP(w, r)
-	})
+        fmt.Println("ADMIN MIDDLEWARE → ROLE:", role)
+
+        if !ok || role != "admin" {
+            http.Error(w, "Forbidden: Admins only", http.StatusForbidden)
+            return
+        }
+
+        next.ServeHTTP(w, r)
+    })
 }

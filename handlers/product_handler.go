@@ -39,6 +39,8 @@ import (
 	"net/http"
 	"strconv"
 	"github.com/gorilla/mux"
+	"futuremarket/models"
+
 
 	
 )
@@ -116,12 +118,76 @@ func (h *ProductHandler) GetProductByID(w http.ResponseWriter, r *http.Request) 
 
 // POST /api/v1/admin/products  (via admin routes)
 func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte("TODO: implement admin create product"))
+	var req struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Category    string `json:"category"`
+		PriceCents  int64  `json:"price_cents"`
+		Stock       int64  `json:"stock"` 
+		ImageURL    string `json:"image_url"`
+	}
+
+	// Parse request body
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Basic validation
+	if req.Name == "" || req.PriceCents <= 0 {
+		http.Error(w, "name and price_cents are required", http.StatusBadRequest)
+		return
+	}
+
+	// Build product model
+	product := models.Product{
+		Name:        req.Name,
+		Description: req.Description,
+		Category:    req.Category,
+		PriceCents:  req.PriceCents,
+		Stock:		 req.Stock,
+		ImageURL:    req.ImageURL,
+		// average rating fields start at zero
+	}
+
+	// Call service layer
+	err := h.Service.CreateProduct(&product)
+	if err != nil {
+		http.Error(w, "failed to create product", http.StatusInternalServerError)
+		return
+	}
+
+	// Success response
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(product)
 }
 
 // PATCH /api/v1/admin/products/{id}
 func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte("TODO: implement admin update product"))
+	idStr := mux.Vars(r)["id"]
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id < 1 {
+		http.Error(w, "invalid product id", http.StatusBadRequest)
+		return
+	}
+
+
+	var req models.Product
+
+	// Parse request body
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Call service to update only provided fields
+	updated, err := h.Service.UpdateProduct(uint(id), &req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updated)
 }
+
