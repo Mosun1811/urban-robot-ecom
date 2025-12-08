@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -70,6 +71,8 @@ func (cfg AuthMiddlewareConfig) AuthMiddleware(next http.Handler) http.Handler {
 			http.Error(w, "invalid token claims", http.StatusUnauthorized)
 			return
 		}
+		fmt.Println("ROLE CLAIM FROM JWT:", claims["role"])       // ← ADD THIS
+		fmt.Println("USER ID CLAIM FROM JWT:", claims["user_id"]) // optional
 
 		// user_id
 		userIDFloat, ok := claims["user_id"].(float64)
@@ -85,6 +88,8 @@ func (cfg AuthMiddlewareConfig) AuthMiddleware(next http.Handler) http.Handler {
 			http.Error(w, "invalid role claim", http.StatusUnauthorized)
 			return
 		}
+
+		fmt.Println("AUTH MIDDLEWARE → Role claim:", role)
 
 		// 5. Store values in context
 		ctx := context.WithValue(r.Context(), ContextUserID, userID)
