@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"futuremarket/models"
 	"futuremarket/service"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -36,42 +35,34 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validation
-	if req.Name == "" || req.Email == "" || req.Password == "" {
-		http.Error(w, "name, email and password required", http.StatusBadRequest)
+	// -----------------------------
+	// VALIDATION
+	// -----------------------------
+	if err := service.ValidateName(req.Name); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := service.ValidateEmail(req.Email); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := service.ValidatePassword(req.Password); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Check if user already exists
-	_, err := h.Service.GetUserByEmail(req.Email)
-	if err == nil {
-		http.Error(w, "user with email already exists", http.StatusConflict)
-		return
-	}
-
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	// -----------------------------
+	// CREATE USER (service handles hashing + checking duplicates)
+	// -----------------------------
+	_, err := h.Service.RegisterUser(req.Name, req.Email, req.Password)
 	if err != nil {
-		http.Error(w, "failed to hash password", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Create user model
-	user := &models.User{
-		Name:         req.Name,
-		Email:        req.Email,
-		PasswordHash: string(hashedPassword),
-		Role:         "customer",
-	}
-
-	// Save user
-	err = h.Service.CreateUser(user)
-	if err != nil {
-		http.Error(w, "failed to create user", http.StatusInternalServerError)
-		return
-	}
-
-	// Success response
+	// -----------------------------
+	// SUCCESS RESPONSE
+	// -----------------------------
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{

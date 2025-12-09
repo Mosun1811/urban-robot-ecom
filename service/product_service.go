@@ -24,9 +24,7 @@ type PaginationMeta struct {
 	Limit       int   `json:"limit"`
 }
 
-// ----------------------------
-// CREATE PRODUCT (Admin Only)
-// ----------------------------
+// CREATE PRODUCT
 func (s ProductService) CreateProduct(p *models.Product) error {
 	if p.Name == "" || p.PriceCents <= 0 {
 		return errors.New("invalid product fields")
@@ -34,16 +32,13 @@ func (s ProductService) CreateProduct(p *models.Product) error {
 	return s.Repo.CreateProduct(p)
 }
 
-// ----------------------------
-// UPDATE PRODUCT (Admin Only)
-// ----------------------------
+// UPDATE PRODUCT
 func (s ProductService) UpdateProduct(id uint, updateData *models.Product) (models.Product, error) {
 	existing, err := s.Repo.GetProductByID(id)
 	if err != nil {
 		return models.Product{}, errors.New("product not found")
 	}
 
-	// Update only provided fields
 	if updateData.Name != "" {
 		existing.Name = updateData.Name
 	}
@@ -60,19 +55,16 @@ func (s ProductService) UpdateProduct(id uint, updateData *models.Product) (mode
 		existing.ImageURL = updateData.ImageURL
 	}
 
-	// ⭐ Add stock update here
-	if updateData.Stock >= 0 {
+	// Only update stock if intentionally set
+	if updateData.Stock != 0 {
 		existing.Stock = updateData.Stock
 	}
 
-	// Save updated product
 	err = s.Repo.UpdateProduct(&existing)
 	return existing, err
 }
 
-// ----------------------------
-// LIST PRODUCTS + FILTERS
-// ----------------------------
+// LIST WITH FILTERS
 func (s ProductService) ListProductsWithFilters(
 	page int,
 	limit int,
@@ -80,6 +72,10 @@ func (s ProductService) ListProductsWithFilters(
 	maxPrice *int64,
 	category *string,
 ) (ProductListResponse, error) {
+
+	if limit <= 0 {
+		limit = 10
+	}
 
 	products, totalItems, err := s.Repo.ListProductsFiltered(page, limit, minPrice, maxPrice, category)
 	if err != nil {
@@ -101,9 +97,6 @@ func (s ProductService) ListProductsWithFilters(
 	}, nil
 }
 
-// ----------------------------
-// GET SINGLE PRODUCT
-// ----------------------------
 func (s ProductService) GetProductByID(id uint) (models.Product, error) {
 	return s.Repo.GetProductByID(id)
 }

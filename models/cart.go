@@ -1,15 +1,10 @@
 package models
 
-import (
-"time"
+import "gorm.io/gorm"
 
-"gorm.io/gorm"
-)
-
-// this one user's basket...
 type Cart struct {
-gorm.Model
-UserID    uint `gorm:"index"`
-CreatedAt time.Time
-UpdatedAt time.Time
+    gorm.Model
+    UserID uint `gorm:"index"`
+
+    Items []CartItem `gorm:"foreignKey:CartID"`
 }
