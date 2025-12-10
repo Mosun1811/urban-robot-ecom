@@ -2,7 +2,9 @@ package repository
 
 import (
 	"futuremarket/models"
+
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ProductRepo struct {
@@ -13,23 +15,47 @@ func NewProductRepo(db *gorm.DB) ProductRepo {
 	return ProductRepo{DB: db}
 }
 
-// Create a new product
+// Create product
 func (r ProductRepo) CreateProduct(product *models.Product) error {
 	return r.DB.Create(product).Error
 }
 
-// Update existing product by ID
+// Update product
 func (r ProductRepo) UpdateProduct(product *models.Product) error {
 	return r.DB.Save(product).Error
 }
 
-// Fetch a single product
+// Get product
 func (r ProductRepo) GetProductByID(id uint) (models.Product, error) {
 	var product models.Product
 	err := r.DB.First(&product, id).Error
 	return product, err
 }
 
+// ⭐ REAL STOCK LOOKUP (used by CartService)
+func (r ProductRepo) GetStockByProductID(productID uint) (*models.Stock, error) {
+	var stock models.Stock
+	err := r.DB.Where("product_id = ?", productID).First(&stock).Error
+	if err != nil {
+		return nil, err
+	}
+	return &stock, nil
+}
+
+// ⭐ LOCKED STOCK LOOKUP (used by OrderService inside transactions)
+func (r ProductRepo) GetStockLocked(tx *gorm.DB, productID uint) (*models.Stock, error) {
+	var stock models.Stock
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("product_id = ?", productID).
+		First(&stock).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return &stock, nil
+}
+
+// ListProductsFiltered applies pagination + filtering for Epic 2
 func (r ProductRepo) ListProductsFiltered(
 	page int,
 	limit int,
@@ -41,6 +67,7 @@ func (r ProductRepo) ListProductsFiltered(
 	var products []models.Product
 	var totalItems int64
 
+	// Start query
 	query := r.DB.Model(&models.Product{})
 
 	// Apply filters
@@ -54,15 +81,19 @@ func (r ProductRepo) ListProductsFiltered(
 		query = query.Where("category = ?", *category)
 	}
 
-	// Count after filters
+	// Count total after filters
 	if err := query.Count(&totalItems).Error; err != nil {
 		return nil, 0, err
 	}
 
 	offset := (page - 1) * limit
 
-	// Get paginated results
-	err := query.Limit(limit).Offset(offset).Order("created_at DESC").Find(&products).Error
+	// Retrieve paginated products
+	err := query.
+		Offset(offset).
+		Limit(limit).
+		Order("created_at DESC").
+		Find(&products).Error
 
 	if err != nil {
 		return nil, 0, err
