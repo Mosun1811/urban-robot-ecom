@@ -86,3 +86,30 @@ func (s *ReviewService) recalcProductRating(productID uint) error {
 
 	
 }
+
+type PaginatedReviews struct {
+    Reviews []models.Review `json:"reviews"`
+    Meta    PaginationMeta   `json:"meta"`
+}
+
+func (s ReviewService) ListReviewsPaginated(productID uint, page, limit int) (PaginatedReviews, error) {
+
+    reviews, total, err := s.Repo.ListReviewsPaginated(productID, page, limit)
+    if err != nil {
+        return PaginatedReviews{}, err
+    }
+
+    totalPages := int(math.Ceil(float64(total) / float64(limit)))
+
+    meta := PaginationMeta{
+        TotalItems:  total,
+        TotalPages:  totalPages,
+        CurrentPage: page,
+        Limit:       limit,
+    }
+
+    return PaginatedReviews{
+        Reviews: reviews,
+        Meta:    meta,
+    }, nil
+}

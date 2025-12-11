@@ -61,8 +61,15 @@ func SetupRouter(
 	// ORDERS
 	protected.HandleFunc("/checkout", orderHandler.Checkout).Methods(http.MethodPost)
 	protected.HandleFunc("/orders", orderHandler.ListOrders).Methods(http.MethodGet)
+	protected.HandleFunc("/orders/paginated", orderHandler.ListOrdersPaginated).Methods(http.MethodGet)
 
 	// AUTHENTICATED REVIEW ROUTES
+	protected.HandleFunc("/products/{id}/reviews", reviewHandler.CreateOrUpdateReview).Methods(http.MethodPost)
+
+	// Public reviews
+	r.HandleFunc("/api/v1/products/{id}/reviews", reviewHandler.ListReviews).Methods(http.MethodGet)
+
+	// Authenticated reviews
 	protected.HandleFunc("/products/{id}/reviews", reviewHandler.CreateOrUpdateReview).Methods(http.MethodPost)
 
 	// ---------------------------------------

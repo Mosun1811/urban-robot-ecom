@@ -26,7 +26,7 @@ func (us UserService) GetUserByEmail(email string) (models.User, error) {
 // ===============================
 //
 
-func (s UserService) RegisterUser(name, email, password string) (models.User, error) {
+func (s UserService) RegisterUser(name, email, password, role string) (models.User, error) {
 
 	// 1) VALIDATION
 	if err := ValidateName(name); err != nil {
@@ -56,7 +56,7 @@ func (s UserService) RegisterUser(name, email, password string) (models.User, er
 		Name:         name,
 		Email:        email,
 		PasswordHash: string(hashed),
-		Role:         "customer",
+		Role:         role,
 	}
 
 	if err := s.Repo.Create(&newUser); err != nil {

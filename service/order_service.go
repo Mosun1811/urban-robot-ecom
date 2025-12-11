@@ -139,3 +139,47 @@ func (s OrderService) ListOrders(userID uint) ([]models.Order, error) {
 
 	return orders, err
 }
+
+// ------------------------------------------------------------
+// LIST ORDERS WITH PAGINATION
+// ------------------------------------------------------------
+func (s OrderService) ListOrdersPaginated(
+	userID uint,
+	page int,
+	limit int,
+) ([]models.Order, int64, error) {
+
+	db := s.OrderRepo.DB
+	if db == nil {
+		return nil, 0, errors.New("order repo db is nil")
+	}
+
+	var (
+		orders []models.Order
+		total  int64
+	)
+
+	// Base query
+	query := db.Model(&models.Order{}).Where("user_id = ?", userID)
+
+	// Count total rows
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+
+	// Paginated result
+	err := query.
+		Preload("Items").
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&orders).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return orders, total, nil
+}
