@@ -107,3 +107,22 @@ func (r *ReviewRepo) UpdateProductRating(productID uint, avg float64, count int6
 			"review_count":   count,
 		}).Error
 }
+
+func (r ReviewRepo) ListReviewsPaginated(productID uint, page, limit int) ([]models.Review, int64, error) {
+    var reviews []models.Review
+    var total int64
+
+    query := r.DB.Model(&models.Review{}).Where("product_id = ?", productID)
+
+    query.Count(&total)
+
+    offset := (page - 1) * limit
+
+    err := r.DB.Where("product_id = ?", productID).
+        Offset(offset).
+        Limit(limit).
+        Order("created_at DESC").
+        Find(&reviews).Error
+
+    return reviews, total, err
+}

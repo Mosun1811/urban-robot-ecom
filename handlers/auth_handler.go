@@ -27,6 +27,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		Name     string `json:"name"`
 		Email    string `json:"email"`
 		Password string `json:"password"`
+		Role     string `json:"role"`
 	}
 
 	// Parse JSON
@@ -39,6 +40,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	// VALIDATION
 	// -----------------------------
 	if err := service.ValidateName(req.Name); err != nil {
+
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -50,11 +52,14 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
+	if req.Role != "user" && req.Role != "admin" {
+		http.Error(w, "Role can either be user or admin", http.StatusBadRequest)
+		return
+	}
 	// -----------------------------
 	// CREATE USER (service handles hashing + checking duplicates)
 	// -----------------------------
-	_, err := h.Service.RegisterUser(req.Name, req.Email, req.Password)
+	_, err := h.Service.RegisterUser(req.Name, req.Email, req.Password, req.Role)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
