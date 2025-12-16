@@ -20,5 +20,7 @@ databases:
   - name: futuremarket-db
     plan: free
     region: frankfurt
+    databaseName: futuremarket
+    user: futuremarket_user
 
 

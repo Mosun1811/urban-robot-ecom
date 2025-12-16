@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -12,32 +11,31 @@ import (
 	"futuremarket/models"
 )
 
-
 var DB *gorm.DB
 
 func InitDB() *gorm.DB {
-	var err error
+	// Load .env ONLY for local development
+	_ = godotenv.Load()
 
-	if err = godotenv.Load(); err != nil {
-		log.Println("warning: could not load .env file, falling back to environment variables")
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("DATABASE_URL is not set — cannot connect to database")
 	}
 
-	connStr := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_PORT"),
-	)
+	// Required for Render
+	// Render requires sslmode=require
+	if !containsSSLMode(dsn) {
+		dsn += "?sslmode=require"
+	}
 
-	// 3. Open the database using GORM and the Postgres driver.
-	DB, err = gorm.Open(postgres.Open(connStr), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 
-	log.Println("connected to database successfully!")
+	DB = db
+
+	log.Println("Connected to database successfully!")
 
 	err = DB.AutoMigrate(
 		&models.User{},
@@ -55,4 +53,12 @@ func InitDB() *gorm.DB {
 	}
 
 	return DB
+}
+
+func containsSSLMode(s string) bool {
+	return len(s) > 0 && (contains(s, "sslmode="))
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (string(s[len(s)-len(substr):]) == substr || string(s[:len(substr)]) == substr || (len(s) > len(substr) && string(s[1:len(substr)+1]) == substr))
 }
