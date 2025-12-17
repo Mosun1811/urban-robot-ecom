@@ -22,12 +22,6 @@ func InitDB() *gorm.DB {
 		log.Fatal("DATABASE_URL is not set — cannot connect to database")
 	}
 
-	// Required for Render
-	// Render requires sslmode=require
-	if !containsSSLMode(dsn) {
-		dsn += "?sslmode=require"
-	}
-
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
@@ -53,12 +47,4 @@ func InitDB() *gorm.DB {
 	}
 
 	return DB
-}
-
-func containsSSLMode(s string) bool {
-	return len(s) > 0 && (contains(s, "sslmode="))
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (string(s[len(s)-len(substr):]) == substr || string(s[:len(substr)]) == substr || (len(s) > len(substr) && string(s[1:len(substr)+1]) == substr))
 }
